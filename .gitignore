@@ -1,0 +1,17 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+!example.tfvars
+crash.log
+override.tf
+
+# Secrets - NEVER commit these
+*.pem
+*.key
+secrets/
+
+# OS
+.DS_Store
