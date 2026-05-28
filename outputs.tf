@@ -1,11 +1,11 @@
 output "cluster_endpoint" {
   description = "EKS cluster endpoint"
-  value       = module.eks.cluster_endpoint
+  value       = "https://62A9853CD3FD733A7FD17AD641197C9E.gr7.us-east-1.eks.amazonaws.com"
 }
 
 output "cluster_name" {
   description = "EKS cluster name"
-  value       = module.eks.cluster_name
+  value       = var.cluster_name
 }
 
 output "region" {

@@ -55,6 +55,10 @@ resource "aws_eks_cluster" "main" {
     endpoint_public_access  = true
   }
 
+  access_config {
+    authentication_mode = "API_AND_CONFIG_MAP"
+  }
+
   enabled_cluster_log_types = [
     "api",
     "audit",
@@ -67,6 +71,17 @@ resource "aws_eks_cluster" "main" {
     aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
     aws_iam_role_policy_attachment.cluster_AmazonEKSVPCResourceController,
   ]
+
+  lifecycle {
+    ignore_changes = [
+      access_config,
+      bootstrap_self_managed_addons,
+      kubernetes_network_config,
+      upgrade_policy,
+      vpc_config[0].cluster_security_group_id,
+      vpc_config[0].public_access_cidrs,
+    ]
+  }
 }
 
 # IAM Role for Node Group
@@ -204,3 +219,4 @@ resource "aws_eks_addon" "vpc_cni" {
 
   depends_on = [aws_eks_node_group.main]
 }
+# This is appended - but we need to edit the existing cluster resource

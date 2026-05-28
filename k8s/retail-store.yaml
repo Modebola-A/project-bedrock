@@ -1,0 +1,428 @@
+# UI Service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: retail-store-ui
+  namespace: retail-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  namespace: retail-app
+  labels:
+    app: ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      serviceAccountName: retail-store-ui
+      containers:
+        - name: ui
+          image: public.ecr.aws/aws-containers/retail-store-sample-ui:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ENDPOINTS_CATALOG
+              value: "http://catalog:8080"
+            - name: ENDPOINTS_CARTS
+              value: "http://carts:8080"
+            - name: ENDPOINTS_ORDERS
+              value: "http://orders:8080"
+            - name: ENDPOINTS_CHECKOUT
+              value: "http://checkout:8080"
+          resources:
+            requests:
+              cpu: 256m
+              memory: 512Mi
+            limits:
+              cpu: 512m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  namespace: retail-app
+spec:
+  selector:
+    app: ui
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# Catalog Service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: retail-store-catalog
+  namespace: retail-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: retail-app
+  labels:
+    app: catalog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog
+  template:
+    metadata:
+      labels:
+        app: catalog
+    spec:
+      serviceAccountName: retail-store-catalog
+      containers:
+        - name: catalog
+          image: public.ecr.aws/aws-containers/retail-store-sample-catalog:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-db-secret
+                  key: host
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-db-secret
+                  key: port
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-db-secret
+                  key: name
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-db-secret
+                  key: password
+          resources:
+            requests:
+              cpu: 128m
+              memory: 256Mi
+            limits:
+              cpu: 256m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: retail-app
+spec:
+  selector:
+    app: catalog
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# Cart Service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: retail-store-carts
+  namespace: retail-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carts
+  namespace: retail-app
+  labels:
+    app: carts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: carts
+  template:
+    metadata:
+      labels:
+        app: carts
+    spec:
+      serviceAccountName: retail-store-carts
+      containers:
+        - name: carts
+          image: public.ecr.aws/aws-containers/retail-store-sample-cart:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CARTS_DYNAMODB_TABLENAME
+              value: "retail-store-carts"
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+            - name: CARTS_DYNAMODB_CREATETABLE
+              value: "false"
+          resources:
+            requests:
+              cpu: 128m
+              memory: 256Mi
+            limits:
+              cpu: 256m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts
+  namespace: retail-app
+spec:
+  selector:
+    app: carts
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# Orders Service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: retail-store-orders
+  namespace: retail-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: retail-app
+  labels:
+    app: orders
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orders
+  template:
+    metadata:
+      labels:
+        app: orders
+    spec:
+      serviceAccountName: retail-store-orders
+      containers:
+        - name: orders
+          image: public.ecr.aws/aws-containers/retail-store-sample-orders:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://project-bedrock-cluster-postgres.c2nq2esy696s.us-east-1.rds.amazonaws.com:5432/orders"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: orders-db-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: orders-db-secret
+                  key: password
+            - name: SPRING_RABBITMQ_HOST
+              value: "rabbitmq"
+          resources:
+            requests:
+              cpu: 128m
+              memory: 512Mi
+            limits:
+              cpu: 256m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: retail-app
+spec:
+  selector:
+    app: orders
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# Checkout Service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: retail-store-checkout
+  namespace: retail-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: retail-app
+  labels:
+    app: checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      serviceAccountName: retail-store-checkout
+      containers:
+        - name: checkout
+          image: public.ecr.aws/aws-containers/retail-store-sample-checkout:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: ENDPOINTS_ORDERS
+              value: "http://orders:8080"
+          resources:
+            requests:
+              cpu: 128m
+              memory: 256Mi
+            limits:
+              cpu: 256m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout
+  namespace: retail-app
+spec:
+  selector:
+    app: checkout
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# RabbitMQ (in-cluster as per assessment)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: retail-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3-management
+          ports:
+            - containerPort: 5672
+            - containerPort: 15672
+          resources:
+            requests:
+              cpu: 128m
+              memory: 256Mi
+            limits:
+              cpu: 256m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: retail-app
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: management
+      port: 15672
+      targetPort: 15672
+---
+# Redis (in-cluster as per assessment)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: retail-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 64m
+              memory: 128Mi
+            limits:
+              cpu: 128m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: retail-app
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
